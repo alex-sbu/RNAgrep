@@ -1,0 +1,18 @@
+#!/bin/bash
+
+THREADS=8
+INPUTSEQ='pp-all.fasta'
+DATADIR='compared-all'
+START=1
+END=6633
+METHOD='crumple'
+WINSIZE=30
+
+for i in $(seq 1 7 $THREADS); do
+    exec th filter.lua -i $INPUTSEQ -d $DATADIR -o 'v1' -p $METHOD -w $WINSIZE -z $i -s $START -e $END &
+done
+wait
+
+
+
+exit 0

@@ -1,0 +1,69 @@
+#!/bin/bash
+
+TESTFILE=`mktemp`
+SEQUENCE="GCUCUAAAAGAGAG"
+
+# Chop off the sequence and sort as required by uniq and comm.
+function suboptions {
+  ./subopt "$@" | tail -n +2 | tr '.()' 'abc' | sort | tr 'abc' '.()'
+}
+
+# $1 is the correct value, $2 is the tested value
+function test_value {
+  echo -n "expected ${1}, got ${2}: "
+  [[ $1 = $2 ]] && {
+    echo "PASS"; return 0;
+  } || {
+    echo "FAIL"; return 1;
+  }
+}
+
+# In preparation for the tests we generate the whole funnel minus the sequence
+# at the top. This is done so we have a later basis for comparison, and is
+# stored sorted since that is required by uniq and comm.
+WCOUNT=`suboptions -i ~/seq/14mer.raw | tee ./14mer-full | wc -l`
+echo "universe of ${WCOUNT} structures"
+
+# First test is to require a pair that cannot happen (C4,A11), and make sure
+# no structures are generated.
+echo "GCUCUAAAAGAGAG" > ${TESTFILE}
+echo "...(......)..." >> ${TESTFILE}
+echo -n "test-1: force (C4,A11): "
+T=`suboptions -C -i ${TESTFILE} | tee ./test-1 | wc -l`
+test_value 0 ${T}
+
+# Next test, forbid something that cannot happen (C2,A9) and make sure we
+# still get a full funnel.
+echo "GCUCUAAAAGAGAG" > ${TESTFILE}
+echo ".[......]....." >> ${TESTFILE}
+echo -n "test-2: forbid (C4,A9): "
+KNOWN=`md5sum < ./14mer-full | cut -d' ' -f1`
+FOUND=`suboptions -C -i ${TESTFILE} | tee ./test-2 | md5sum | cut -d' ' -f1`
+test_value ${KNOWN} ${FOUND}
+
+function positive_venn {
+  WMINUSF=`mktemp`
+  COUNT=`suboptions -C -i ${TESTFILE} | tee ./test-3 | wc -l`
+  XCOUNT=`comm -23 ./14mer-full ./test-3 | tee ${WMINUSF} | wc -l`
+  echo -n "  found ${COUNT} satisfying structures, ${XCOUNT} not found: "
+  test_value $((${XCOUNT}+${COUNT})) ${WCOUNT}
+  echo -n "  non-containment check: "
+  T=`comm -13 ./14mer-full ./test-3 | wc -l`
+  test_value 0 ${T}
+  echo -n "  constraint failures: "
+  T=`./constraintcheck ${TESTFILE} ./test-3 | tee lol | grep should | wc -l`
+  test_value 0 ${T}
+  echo -n "  funnel failures: "
+  T=`./constraintcheck ${TESTFILE} ${WMINUSF} | tee ./check | grep should | wc -l`
+  test_value ${XCOUNT} ${T}
+  rm ${WMINUSF}
+}
+
+echo "test-3: require (C2,G10):"
+echo "GCUCUAAAAGAGAG" > ${TESTFILE}
+echo ".(.......)...." >> ${TESTFILE}
+
+positive_venn
+
+rm ${TESTFILE}
+

@@ -1,0 +1,30 @@
+Crumple is for full-funnel folding of RNA secondary structures.
+
+Crumple expects GNU make; building is as simple as:
+
+> make
+
+To truly fold a full funnel, pipe crumple a sequence; no options are necessary:
+
+> echo "GCUCUAAAAGAGAG" | ./crumple 
+
+Crumple can also accept input from a file:
+
+> ./crumple -i sequence.seq
+
+Various filters are available to reduce the (admittedly expansive)
+output, includeing removing structures that contain lonely
+pairs. obeying the constraints of chemical modification and
+covariation data, and the number and type of helices. For more
+information about all of these options, read the usage message:
+
+> ./crumple --help
+
+Crumple can be run serially, on a single machine, or in parallel, using
+MPI. To compile for parallel execution, ensure that libMPI is
+available, and:
+
+> make mpi
+
+Crumple's parallel implementation is well-tuned, and for problems that
+take more than a few minutes, you should experience linear speedup.
